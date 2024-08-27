@@ -12,7 +12,7 @@ from fasthtml.oauth import GoogleAppClient
 db = database('data/user_counts.db')
 user_counts = db.t.user_counts
 if user_counts not in db.t:
-    user_counts.create(dict(name=str, count=int), pk='name')
+    user_counts.create(dict(name=str, count=int, signed_up=bool), pk='name', transform=True)
 Count = user_counts.dataclass()
 
 # Auth client setup for GitHub
@@ -24,15 +24,15 @@ login_link = client.login_link()
 
 # Beforeware that puts the user_id in the request scope or redirects to the login page if not logged in.
 def before(req, session):
-    # The `auth` key in the scope is automatically provided to any handler which requests it, and can not
-    # be injected by the user using query params, cookies, etc, so it should be secure to use.
     auth = req.scope['auth'] = session.get('user_id', None)
-    # If the session key is not there, it redirects to the login page.
-    if not auth: return RedirectResponse('/login', status_code=303)
-    # If the user is not in the database, redirect to the login page.
-    if auth not in user_counts: return RedirectResponse('/login', status_code=303)
-    # Ensure user can only see their own counts:
-    user_counts.xtra(name=auth)
+    if not auth:
+        return RedirectResponse('/login', status_code=303)
+    if auth not in user_counts:
+        return RedirectResponse('/login', status_code=303)
+    user = user_counts[auth]
+    if not user.signed_up and req.url.path != '/signup':
+        return RedirectResponse('/signup', status_code=303)
+
 bware = Beforeware(before, skip=['/login', '/auth_redirect'])
 
 app = FastHTML(before=bware)
@@ -40,11 +40,10 @@ app = FastHTML(before=bware)
 # Homepage (only visible if logged in)
 @app.get('/')
 def home(auth):
+    user = user_counts[auth]
     return Div(
-        P("Count demo"),
-        P(f"Count: ", Span(user_counts[auth].count, id='count')),
-        Button('Increment', hx_get='/increment', hx_target='#count'),
-        P(A('Logout', href='/logout'))  # Link to log out,
+        P(f"Hello, {user.name}"),
+        P(A('Logout', href='/logout'))
     )
 
 @app.get('/increment')
@@ -57,7 +56,7 @@ def increment(auth):
 @app.get('/login')
 def login(): 
     return Div(P("You are not logged in."), 
-               A('Log in with GitHub', href=client.login_link()))
+               A('Log in with Google', href=client.login_link()))
 
 # To log out, we just remove the user_id from the session.
 @app.get('/logout')
@@ -88,7 +87,7 @@ def auth_redirect(code:str, session, state:str=None):
 
         # We also add the user in the database, if they are not already there.
         if user_id not in user_counts:
-            user_counts.insert(name=user_id, count=0)
+            user_counts.insert(name=user_id, count=0, signed_up=False)
 
         # Redirect to the homepage
         return RedirectResponse('/', status_code=303)
@@ -98,3 +97,30 @@ def auth_redirect(code:str, session, state:str=None):
         return f"Could not log in."
 
 serve(port=8000)
+
+@app.get('/signup')
+def signup(auth):
+    return Div(
+        P("Please complete your signup"),
+        Form(
+            Input(name="name", placeholder="Your name"),
+            Button("Sign up", type="submit"),
+            method="POST",
+            action="/signup"
+        )
+    )
+
+@app.post('/signup')
+def process_signup(auth, name: str, session):
+    print(f"auth: {auth}")
+    print(f"session: {session}")
+    
+    if auth not in user_counts:
+        session.pop('user_id', None)
+        return RedirectResponse('/login', status_code=303)
+
+    user = user_counts[auth]
+    user.name = name
+    user.signed_up = True
+    user_counts.upsert(user)
+    return RedirectResponse('/', status_code=303)
