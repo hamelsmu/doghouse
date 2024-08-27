@@ -2,3 +2,4 @@ fasthtml_docs
 data/
 __pycache__/
 .*
+!.gitignore
