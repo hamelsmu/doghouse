@@ -1,0 +1,4 @@
+fasthtml_docs
+data/
+__pycache__/
+.*
