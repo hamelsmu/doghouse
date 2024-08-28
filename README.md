@@ -23,10 +23,7 @@ source ~/venv/doghouse/bin/activate
 pip install -r requirements.txt
 ```
 
-```bash {"id":"01J6B09N8FA7PYANH7GQ804WRY"}
-source ~/venv/doghouse/bin/activate
-python3 database.py
-```
+## Run the application
 
 ```bash {"id":"01J6AZYVGG5VCWZ2SX71MG8SHW"}
 python database.py
