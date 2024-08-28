@@ -1,8 +1,8 @@
 Google OAuth Login + FASTHTML
 
-Run it 
+## Setup & Installation
 
-## Setup a virtual environment
+### Setup a virtual environment
 
 ```bash {"id":"01J6B0885W4MV3E8JP04B4QSHN"}
 python -m venv ~/venv/doghouse
@@ -16,7 +16,7 @@ Activate the virtual environment
 source ~/venv/doghouse/bin/activate
 ```
 
-Install the requirement packages 
+### Install the requirement packages 
 
 ```bash {"id":"01J6B0PHG4E5V23VPVQEWGPBMB"}
 source ~/venv/doghouse/bin/activate
